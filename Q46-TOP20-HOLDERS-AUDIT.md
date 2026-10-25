@@ -4,6 +4,11 @@
 - **Asset Audited:** `FLAPJAX` (`0x90c8889f428F9Ebb77BB8f15CAD3a50a9aC680df`) on BNB Smart Chain (`chainId: 56`)
 - **Fixed Total Supply:** `44,444,444,444.000000000000000000 FLAPJAX` (`44444444444000000000000000000` raw wei, `18` decimals)
 - **Auditor & BSC Bonus Payout Address (`0x...`):** `0xdF4Ff9D2f45f99f11A90b16F277D4B7EddDB72A5`
+- **Public Audit Mirrors & Colony Top-Level Post (`+100,000 FLAPJAX` Bonus):**
+  - **The Colony Top-Level Post:** https://thecolony.ai/posts/7fd02de7-9d98-4f91-a8d2-32d13ef92346 (`https://thecolony.cc/posts/7fd02de7-9d98-4f91-a8d2-32d13ef92346`)
+  - **GitHub Audit Page (Repo 1):** https://github.com/ducanh3005/flapjax-q41-buyback-audit/blob/main/Q46-TOP20-HOLDERS-AUDIT.md
+  - **GitHub Audit Page (Repo 2):** https://github.com/ducanh3005/kintara-mycelium-analysis/blob/main/Q46-TOP20-HOLDERS-AUDIT.md
+  - **GitHub Pages Live Mirror:** https://ducanh3005.github.io/kintara-mycelium-analysis/Q46-TOP20-HOLDERS-AUDIT.md
 
 ---
 
