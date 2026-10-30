@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagnostic & Drop-In Patch — React + Node Stale Session Bug After Logout</title>
+  <style>
+    :root { --bg: #0b0f19; --card: #131b2e; --border: #26324d; --text: #e2e8f0; --accent: #38bdf8; --green: #4ade80; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 920px; margin: 0 auto; padding: 32px 20px; line-height: 1.6; }
+    .badge { display: inline-block; background: rgba(56,189,248,0.15); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+    h1 { font-size: 26px; margin: 12px 0 8px; color: #fff; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 20px 0; }
+    h2 { font-size: 18px; color: var(--green); margin-top: 0; }
+    pre { background: #070a12; border: 1px solid #1e293b; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 13.5px; color: #f8fafc; }
+    code { font-family: 'Consolas', 'Monaco', monospace; }
+  </style>
+</head>
+<body>
+  <span class="badge">Prepared for u/Yukiko_Komuro • React + Node + Railway Postgres</span>
+  <h1>Why Your Dashboard Shows Stale Session Data Until Hard Reload (Ctrl+F5)</h1>
+  <p>When a React SPA shows the previous user's data after <code>logout() -&gt; login()</code> and only fixes itself on a full browser reload, the database on Railway is returning the right data—the bug is in <strong>in-memory state or HTTP cache surviving the soft client-side route transition</strong>.</p>
+
+  <div class="card">
+    <h2>Cause #1: TanStack Query / SWR Cache Not Cleared Before Route Transition</h2>
+    <p>If you use React Query or SWR, logging out removes the token but leaves the cached <code>['dashboard']</code> / <code>['user']</code> query data in memory. When User B logs in, React mounts <code>&lt;Dashboard /&gt;</code> and immediately renders User A's cached query while <code>staleTime</code> hasn't expired.</p>
+    <pre><code>// Inside your logout() handler:
+import { useQueryClient } from '@tanstack/react-query';
+
+const queryClient = useQueryClient();
+
+async function handleLogout() {
+  await api.post('/auth/logout');
+  localStorage.removeItem('token');
+  queryClient.clear(); // &lt;-- CRITICAL: wipes all in-memory user queries immediately
+  navigate('/login', { replace: true });
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <h2>Cause #2: Axios Instance Capturing Token Once at Module Load</h2>
+    <p>If your API client sets <code>headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }</code> when <code>axios.create()</code> runs at startup, that header stays frozen to User A's token until you press Ctrl+F5 (which re-executes the JS bundle).</p>
+    <pre><code>// Fix: Read the token dynamically on EVERY request via an interceptor
+export const api = axios.create({ baseURL: import.meta.env.VITE_API_URL });
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
+  }
+  return config;
+});</code></pre>
+  </div>
+
+  <div class="card">
+    <h2>Cause #3: Express API Missing No-Store Headers (Browser Disk Cache 304 Hit)</h2>
+    <p>Express enables <code>ETag</code> by default. Without <code>Cache-Control: no-store</code> on authenticated endpoints, the browser can serve a cached GET response for <code>/api/dashboard</code> until a hard reload forces <code>Cache-Control: no-cache</code>.</p>
+    <pre><code>// Add this middleware to your authenticated Express routes:
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Vary', 'Authorization, Cookie');
+  next();
+});</code></pre>
+  </div>
+
+  <div class="card">
+    <h2>Cause #4: React Reusing Mounted &lt;Dashboard /&gt; State Across Users</h2>
+    <p>Keying your protected layout or dashboard by the authenticated user's ID forces React to unmount and destroy all local state whenever the user ID changes:</p>
+    <pre><code>&lt;Dashboard key={currentUser?.id ?? 'anonymous'} /&gt;</code></pre>
+  </div>
+</body>
+</html>
